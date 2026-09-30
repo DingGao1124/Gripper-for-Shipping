@@ -1,0 +1,37 @@
+[tool.poetry]
+name = "Grasper_for_Shipping"
+version = "0.0.1"
+description = ""
+authors = []
+license = ""
+readme = "README.md"
+repository = "https://github.com/DingGao1124/Grasper-for-Shipping"
+packages = [
+  { include = "gym_pybullet_drones" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pillow = "^12.3"
+setuptools = ">=83"
+torch = "^2.13"
+numpy = "^2.5"
+scipy = "^1.18"
+transforms3d = "^0.4"
+matplotlib = "^3.11"
+pybullet = "^3.2.7"
+gymnasium = "^1.3"
+stable-baselines3 = "^2.9"
+control = "^0.10.2"
+pytest = "^9.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py", "*_test.py"]
+testpaths = ['tests']
+
+[tool.pyright]
+typeCheckingMode = "basic"
