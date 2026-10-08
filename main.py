@@ -12,13 +12,7 @@ ROBOT_BASE_Z = 0.630
 ARM_JOINTS = [1, 2, 3, 4, 5, 6]
 DRIVE_JOINT = 8
 
-MIMIC_JOINTS = {
-    9: [1, 0, 0],
-    10: [-1, 0, 0],
-    11: [1, 0, 0],
-    12: [-1, 0, 0],
-    13: [1, 0, 0],
-}
+MIMIC_JOINTS = {9: [1, 0, 0], 10: [-1, 0, 0], 11: [1, 0, 0], 12: [-1, 0, 0], 13: [1, 0, 0]}
 END_EFFECTOR = 6
 
 FINGER_OFFSET = 0.17
@@ -38,10 +32,7 @@ def main(gui=True, hold=True):
     p.setPhysicsEngineParameter(numSolverIterations=150)
     if gui:
       p.resetDebugVisualizerCamera(
-        cameraDistance=1.35,
-        cameraYaw=48,
-        cameraPitch=-32,
-        cameraTargetPosition=[0.45, 0.0, 0.75],
+        cameraDistance=1.35, cameraYaw=48, cameraPitch=-32, cameraTargetPosition=[0.45, 0.0, 0.75]
       )
 
     p.loadURDF("plane.urdf")
@@ -61,10 +52,7 @@ def main(gui=True, hold=True):
     _move(robot, _above(place, 0.15), OPEN_ANGLE, 0.8, gui, grip_force=20)
 
     position = p.getBasePositionAndOrientation(block)[0]
-    print(
-      "方块放下后的位置: "
-      f"x={position[0]:.3f} m, y={position[1]:.3f} m, z={position[2]:.3f} m"
-    )
+    print(f"方块放下后的位置: x={position[0]:.3f} m, y={position[1]:.3f} m, z={position[2]:.3f} m")
 
     if gui and hold:
       print("夹取完成。关闭仿真窗口即可退出。")
@@ -72,7 +60,7 @@ def main(gui=True, hold=True):
         p.stepSimulation()
         time.sleep(DT)
     return position
-  except KeyboardInterrupt:
+  except KeyboardInterrupt:  # noqa: TRY203
     raise
   finally:
     if p.isConnected(client):
@@ -80,11 +68,7 @@ def main(gui=True, hold=True):
 
 
 def _load_robot():
-  robot = p.loadURDF(
-    "xarm/xarm6_with_gripper.urdf",
-    [0.0, 0.0, ROBOT_BASE_Z],
-    useFixedBase=True,
-  )
+  robot = p.loadURDF("xarm/xarm6_with_gripper.urdf", [0.0, 0.0, ROBOT_BASE_Z], useFixedBase=True)
   for joint_id, position in zip(ARM_JOINTS, HOME):
     p.resetJointState(robot, joint_id, position)
   for joint_id, axis in MIMIC_JOINTS.items():
@@ -107,16 +91,9 @@ def _load_robot():
 
 def _load_block(position):
   collision = p.createCollisionShape(p.GEOM_BOX, halfExtents=[BLOCK_HALF] * 3)
-  visual = p.createVisualShape(
-    p.GEOM_BOX,
-    halfExtents=[BLOCK_HALF] * 3,
-    rgbaColor=[0.92, 0.42, 0.15, 1.0],
-  )
+  visual = p.createVisualShape(p.GEOM_BOX, halfExtents=[BLOCK_HALF] * 3, rgbaColor=[0.92, 0.42, 0.15, 1.0])
   block = p.createMultiBody(
-    baseMass=0.05,
-    baseCollisionShapeIndex=collision,
-    baseVisualShapeIndex=visual,
-    basePosition=position,
+    baseMass=0.05, baseCollisionShapeIndex=collision, baseVisualShapeIndex=visual, basePosition=position
   )
   p.changeDynamics(block, -1, lateralFriction=2.0)
   return block
@@ -154,24 +131,13 @@ def _move(robot, tcp, gripper, seconds, gui, grip_force):
     target = start * (1.0 - alpha) + goal * alpha
     for joint_id, position in zip(ARM_JOINTS, target):
       p.setJointMotorControl2(
-        robot,
-        joint_id,
-        p.POSITION_CONTROL,
-        targetPosition=float(position),
-        force=250,
-        positionGain=0.04,
+        robot, joint_id, p.POSITION_CONTROL, targetPosition=float(position), force=250, positionGain=0.04
       )
-    p.setJointMotorControl2(
-      robot,
-      DRIVE_JOINT,
-      p.POSITION_CONTROL,
-      targetPosition=gripper,
-      force=grip_force,
-    )
+    p.setJointMotorControl2(robot, DRIVE_JOINT, p.POSITION_CONTROL, targetPosition=gripper, force=grip_force)
     p.stepSimulation()
     if gui:
       # Do some delay here to see every step.
-      time.sleep(DT/10)
+      time.sleep(DT / 10)
 
 
 if __name__ == "__main__":
