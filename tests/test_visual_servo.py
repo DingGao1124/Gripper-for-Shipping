@@ -3,7 +3,7 @@
 import numpy as np
 import pybullet as p
 
-from examples import visual_servo as demo
+from examples.visual_servo import visual_servo as demo
 
 
 def test_interaction_and_wheel_jacobians_against_projection():

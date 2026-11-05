@@ -36,11 +36,13 @@ build-backend = "poetry.core.masonry.api"
 python_files = ["test_*.py", "*_test.py"]
 testpaths = ['tests']
 
+# type checker
 [tool.pyright]
 typeCheckingMode = "off"
 ignore = ["typings/**"]
 stubPath = "typings"
 
+# linter and formatter
 [tool.ruff]
 force-exclude = true
 extend-exclude = ["*.pyi", "**/site-packages/**", "**/dist-packages/**", "**/lib/python3.*/**"]
