@@ -1,0 +1,712 @@
+<?xml version="1.0" ?>
+<robot name="gantry_crane">
+  <!-- Desktop gantry: load at table center [0.55, 0, 0].
+       trolley_x=0, gantry_y=0 places the hook over the table origin.
+       Girder / cable attachment is at z = 1.32 m.
+       Rails extend to cover bogies throughout the gantry travel.
+       Hoist prismatic along -Z so positive l lowers the hook. -->
+
+  <material name="steel"><color rgba="0.56 0.60 0.64 1"/></material>
+  <material name="wheel_tread"><color rgba="0.12 0.14 0.16 1"/></material>
+  <material name="wheel_flange"><color rgba="0.30 0.33 0.36 1"/></material>
+  <material name="bolt"><color rgba="0.72 0.75 0.78 1"/></material>
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.82 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 1.50 0.04"/>
+      </geometry>
+      <material name="rail">
+        <color rgba="0.18 0.18 0.20 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.82 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.08 1.50 0.04"/>
+      </geometry>
+      <material name="rail">
+        <color rgba="0.18 0.18 0.20 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="gantry_link">
+    <inertial>
+      <origin xyz="0 0 0.85" rpy="0 0 0"/>
+      <mass value="8"/>
+      <inertia ixx="2.4" ixy="0" ixz="0" iyy="3.1" iyz="0" izz="1.6"/>
+    </inertial>
+    <visual>
+      <origin xyz="-0.82 0 0.7325" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.07 0.07 1.135"/>
+      </geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.82 0 0.7325" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.07 0.07 1.135"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.82 0 0.7325" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.07 0.07 1.135"/>
+      </geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.82 0 0.7325" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.07 0.07 1.135"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 1.354" rpy="0 0 0"/>
+      <geometry><box size="1.72 0.12 0.012"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 1.286" rpy="0 0 0"/>
+      <geometry><box size="1.72 0.12 0.012"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 1.32" rpy="0 0 0"/>
+      <geometry><box size="1.72 0.018 0.056"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 1.32" rpy="0 0 0"/>
+      <geometry>
+        <box size="1.72 0.10 0.08"/>
+      </geometry>
+    </collision>
+    <!-- Rail bogies: four wheels, axle direction X; tread touches rail at z=0.04.
+         Wheel visuals follow gantry_y; rolling is represented by that prismatic joint. -->
+    <visual>
+      <origin xyz="-0.82 0 0.1475" rpy="0 0 0"/>
+      <geometry><box size="0.15 0.58 0.035"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.82 0 0.1475" rpy="0 0 0"/>
+      <geometry><box size="0.15 0.58 0.035"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.82 0 0.174" rpy="0 0 0"/>
+      <geometry><box size="0.12 0.13 0.018"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.82 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.82 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.855 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.863 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.877 -0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.888 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.785 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.777 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.763 -0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.752 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.82 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.82 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.855 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.863 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.877 0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.888 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.785 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.777 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.763 0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.752 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.865 -0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.865 0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.775 -0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.775 0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.710 0 1.165" rpy="0 0.78539816339 0"/>
+      <geometry><box size="0.035 0.06 0.31"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.82 0 1.274" rpy="0 0 0"/>
+      <geometry><box size="0.095 0.095 0.016"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.82 0 0.1475" rpy="0 0 0"/>
+      <geometry><box size="0.15 0.58 0.035"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.82 0 0.1475" rpy="0 0 0"/>
+      <geometry><box size="0.15 0.58 0.035"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.82 0 0.174" rpy="0 0 0"/>
+      <geometry><box size="0.12 0.13 0.018"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.82 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.82 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.785 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.777 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.763 -0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.752 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.855 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.863 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.877 -0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.888 -0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.82 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.82 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.045" length="0.064"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="0.785 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.777 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.763 0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.752 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.855 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.052" length="0.006"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.863 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.018" length="0.01"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.877 0.21 0.117" rpy="0 0 0"/>
+      <geometry><box size="0.015 0.066 0.058"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.888 0.21 0.085" rpy="0 1.57079632679 0"/>
+      <geometry><cylinder radius="0.008" length="0.008"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.775 -0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.775 0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.865 -0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.865 0.045 0.186" rpy="0 0 0"/>
+      <geometry><cylinder radius="0.006" length="0.006"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.710 0 1.165" rpy="0 -0.78539816339 0"/>
+      <geometry><box size="0.035 0.06 0.31"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.82 0 1.274" rpy="0 0 0"/>
+      <geometry><box size="0.095 0.095 0.016"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="gantry_y" type="prismatic">
+    <parent link="base_link"/>
+    <child link="gantry_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.45" upper="0.45" effort="200" velocity="1.0"/>
+    <dynamics damping="4.0" friction="0.0"/>
+  </joint>
+
+  <link name="trolley_link">
+    <inertial>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <mass value="0.4"/>
+      <inertia ixx="5e-4" ixy="0" ixz="0" iyy="6e-4" iyz="0" izz="8e-4"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0.06" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.14 0.12 0.07"/>
+      </geometry>
+      <material name="amber">
+        <color rgba="0.85 0.55 0.12 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.06" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.14 0.12 0.07"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin xyz="0 0 -0.02" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.02" length="0.04"/>
+      </geometry>
+      <material name="sheave">
+        <color rgba="0.35 0.35 0.38 1"/>
+      </material>
+    </visual>
+    <!-- Trolley roller assemblies and transverse hoist drum. -->
+    <visual>
+      <origin xyz="0 -0.081 0.012" rpy="0 0 0"/>
+      <geometry><box size="0.18 0.016 0.125"/></geometry>
+      <material name="amber">
+        <color rgba="0.85 0.55 0.12 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.052 -0.0599 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.023"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.052 -0.0972 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.008" length="0.012"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.052 -0.0599 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.023"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.052 -0.0972 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.008" length="0.012"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0.081 0.012" rpy="0 0 0"/>
+      <geometry><box size="0.18 0.016 0.125"/></geometry>
+      <material name="amber">
+        <color rgba="0.85 0.55 0.12 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.052 0.0599 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.023"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="-0.052 0.0972 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.008" length="0.012"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.052 0.0599 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.022" length="0.023"/></geometry>
+      <material name="wheel_tread">
+        <color rgba="0.12 0.14 0.16 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0.052 0.0972 -0.015" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.008" length="0.012"/></geometry>
+      <material name="bolt">
+        <color rgba="0.72 0.75 0.78 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 -0.045" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.026" length="0.085"/></geometry>
+      <material name="steel">
+        <color rgba="0.56 0.60 0.64 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 -0.047 -0.045" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.034" length="0.008"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0.047 -0.045" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.034" length="0.008"/></geometry>
+      <material name="wheel_flange">
+        <color rgba="0.30 0.33 0.36 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0.119 0.053" rpy="1.57079632679 0 0"/>
+      <geometry><cylinder radius="0.027" length="0.052"/></geometry>
+      <material name="slate">
+        <color rgba="0.22 0.34 0.46 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="trolley_x" type="prismatic">
+    <parent link="gantry_link"/>
+    <child link="trolley_link"/>
+    <origin xyz="0 0 1.32" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.40" upper="0.40" effort="200" velocity="1.0"/>
+    <dynamics damping="4.0" friction="0.0"/>
+  </joint>
+
+  <link name="sway_x_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.02"/>
+      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+    </inertial>
+  </link>
+
+  <joint name="sway_x" type="revolute">
+    <parent link="trolley_link"/>
+    <child link="sway_x_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-1.4" upper="1.4" effort="20" velocity="10"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+
+  <link name="sway_y_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.02"/>
+      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/>
+    </inertial>
+  </link>
+
+  <joint name="sway_y" type="revolute">
+    <parent link="sway_x_link"/>
+    <child link="sway_y_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.4" upper="1.4" effort="20" velocity="10"/>
+    <dynamics damping="0.0" friction="0.0"/>
+  </joint>
+
+  <link name="hook_link">
+    <inertial>
+      <origin xyz="0 0 -0.03" rpy="0 0 0"/>
+      <mass value="0.08"/>
+      <inertia ixx="4e-5" ixy="0" ixz="0" iyy="4e-5" iyz="0" izz="2e-5"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.018"/>
+      </geometry>
+      <material name="hook">
+        <color rgba="0.78 0.16 0.12 1"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0 0 -0.03" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.008" length="0.04"/>
+      </geometry>
+      <material name="hook">
+        <color rgba="0.78 0.16 0.12 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="hoist" type="prismatic">
+    <parent link="sway_y_link"/>
+    <child link="hook_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 -1"/>
+    <limit lower="0.05" upper="1.25" effort="80" velocity="0.8"/>
+    <dynamics damping="1.0" friction="0.0"/>
+  </joint>
+</robot>

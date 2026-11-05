@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[codz]
+*$py.class
+*.so
+
+# Packaging (poetry)
+build/
+dist/
+*.egg-info/
+
+# Tests
+.coverage
+.pytest_cache/
+.ruff_cache/
+
+# Environments
+.env
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# VS Code
+.github/
+.vscode/
+
+# Project
+tmp/
+/test*.py
+/data/
+/datasets/
