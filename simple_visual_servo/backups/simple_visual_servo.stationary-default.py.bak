@@ -1,0 +1,260 @@
+#!/usr/bin/env python3
+"""Centre a blue block using one wrist RGB camera and simple image feedback.
+
+The Summit base (world vx, vy, yaw rate) and seven WAM joints share one
+damped pseudoinverse controller. This is an ideal velocity/kinematic demo:
+poses are integrated directly, without wheel dynamics or a physics controller.
+Only RGB pixels provide target feedback; no target pose, depth, or simulator
+segmentation is used by the controller. See README.md for the equations.
+"""
+
+import argparse
+import csv
+from pathlib import Path
+import time
+
+import cv2
+import numpy as np
+import pybullet as p
+
+
+HERE = Path(__file__).resolve().parent
+ASSETS = HERE / "assets"
+WIDTH, HEIGHT = 640, 480
+DT = 1.0 / 30.0
+FOV = 80.0  # PyBullet uses a vertical field of view.
+FOCAL = HEIGHT / (2.0 * np.tan(np.deg2rad(FOV / 2.0)))
+CENTRE = np.array([WIDTH / 2.0, HEIGHT / 2.0])
+GAIN = 1.2
+DAMPING = 0.05
+DEPTH_ESTIMATE = 2.0  # Constant nominal depth, NOT measured simulator depth.
+PIXEL_TOLERANCE = 2.0
+TARGET_POSITION = np.array([2.6, 0.5, 1.0])
+# Same wrist mounting and 90-degree image roll as the thesis scripts.
+CAMERA_OFFSET = np.array([-0.06, 0.0, 0.115])
+# Optical axes: x right, y down, z forward, expressed in the wrist frame.
+OPTICAL_ROTATION = np.array([[0., 1., 0.], [-1., 0., 0.], [0., 0., 1.]])
+SPEED_LIMITS = np.array([0.15, 0.15, 0.25] + [0.4] * 7)
+
+
+def rotation(quaternion):
+    return np.array(p.getMatrixFromQuaternion(quaternion)).reshape(3, 3)
+
+
+def load_scene():
+    """Load only local assets; keep the fingers open and start with J4 bent."""
+    p.setGravity(0, 0, 0)
+    p.setTimeStep(DT)
+    p.loadURDF(str(ASSETS / "ground.urdf"), useFixedBase=True)
+    robot = p.loadURDF(str(ASSETS / "waterloo_steel_full.urdf"),
+                       [0, 0, 0.13], useFixedBase=True)
+    joints = {}
+    links = {}
+    for index in range(p.getNumJoints(robot)):
+        info = p.getJointInfo(robot, index)
+        joints[info[1].decode()] = index
+        links[info[12].decode()] = index
+        if info[2] != p.JOINT_FIXED:
+            p.setJointMotorControl2(robot, index, p.VELOCITY_CONTROL, force=0)
+    arm = [joints[f"wam/J{i}"] for i in range(1, 8)]
+    p.resetJointState(robot, arm[3], 1.572)
+    target = p.loadURDF(str(ASSETS / "blue_block.urdf"),
+                        TARGET_POSITION.tolist(), useFixedBase=True)
+    return robot, arm, links["wam/wrist_palm_link"], target
+
+
+def camera_pose(robot, wrist):
+    state = p.getLinkState(robot, wrist, computeForwardKinematics=True)
+    wrist_rotation = rotation(state[5])
+    position = np.array(state[4]) + wrist_rotation @ CAMERA_OFFSET
+    return position, wrist_rotation @ OPTICAL_ROTATION
+
+
+def capture_rgb(position, optical_rotation):
+    """Render one camera, discarding the simulator's depth/segmentation data."""
+    view = p.computeViewMatrix(position.tolist(),
+                               (position + optical_rotation[:, 2]).tolist(),
+                               (-optical_rotation[:, 1]).tolist())
+    projection = p.computeProjectionMatrixFOV(FOV, WIDTH / HEIGHT, 0.02, 8.0)
+    result = p.getCameraImage(WIDTH, HEIGHT, view, projection,
+                              renderer=p.ER_TINY_RENDERER,
+                              flags=p.ER_NO_SEGMENTATION_MASK)
+    rgba = np.asarray(result[2], dtype=np.uint8).reshape(HEIGHT, WIDTH, 4)
+    return cv2.cvtColor(rgba[:, :, :3], cv2.COLOR_RGB2BGR)
+
+
+def detect_blue(frame):
+    """Use the largest blue image region, rather than a simulator object ID."""
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, np.array([100, 100, 45]), np.array([135, 255, 255]))
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+    contour = max(contours, key=cv2.contourArea)
+    moments = cv2.moments(contour)
+    if moments["m00"] < 20:
+        return None
+    return np.array([moments["m10"] / moments["m00"],
+                     moments["m01"] / moments["m00"]])
+
+
+def camera_jacobian(robot, arm, camera_position, optical_rotation):
+    """6 x 10 geometric Jacobian at the camera, in optical coordinates."""
+    base_position = np.array(p.getBasePositionAndOrientation(robot)[0])
+    z_axis = np.array([0., 0., 1.])
+    jacobian = np.zeros((6, 10))
+    jacobian[:3, :2] = np.eye(3)[:, :2]  # World-frame mobile base vx, vy.
+    jacobian[:3, 2] = np.cross(z_axis, camera_position - base_position)
+    jacobian[3:, 2] = z_axis
+    for column, joint in enumerate(arm, start=3):
+        info = p.getJointInfo(robot, joint)
+        state = p.getLinkState(robot, joint, computeForwardKinematics=True)
+        axis_world = rotation(state[5]) @ np.array(info[13])
+        jacobian[:3, column] = np.cross(axis_world, camera_position - state[4])
+        jacobian[3:, column] = axis_world
+    jacobian[:3] = optical_rotation.T @ jacobian[:3]
+    jacobian[3:] = optical_rotation.T @ jacobian[3:]
+    return jacobian
+
+
+def feedback_velocity(centroid, jacobian):
+    """One image-based P feedback law, solved with a damped pseudoinverse."""
+    if centroid is None:
+        return np.zeros(10)  # Stop immediately if the block leaves the image.
+    error_pixels = centroid - CENTRE
+    if np.linalg.norm(error_pixels) <= PIXEL_TOLERANCE:
+        return np.zeros(10)
+    x, y = error_pixels / FOCAL
+    z = DEPTH_ESTIMATE
+    # Point-feature interaction matrix for optical x right, y down, z forward.
+    interaction = np.array([
+        [-1/z, 0, x/z, x*y, -(1+x*x), y],
+        [0, -1/z, y/z, 1+y*y, -x*y, -x],
+    ])
+    image_jacobian = interaction @ jacobian
+    velocity = -GAIN * image_jacobian.T @ np.linalg.solve(
+        image_jacobian @ image_jacobian.T + DAMPING**2 * np.eye(2), [x, y])
+    # Scale all rates together so the commanded image-motion direction survives.
+    velocity /= max(1.0, float(np.max(np.abs(velocity) / SPEED_LIMITS)))
+    return velocity
+
+
+def apply_velocity(robot, arm, velocity):
+    """Integrate ideal planar base and arm rates; enforce the URDF arm limits."""
+    position, orientation = p.getBasePositionAndOrientation(robot)
+    yaw = p.getEulerFromQuaternion(orientation)[2] + DT * velocity[2]
+    p.resetBasePositionAndOrientation(
+        robot, [position[0] + DT * velocity[0],
+                position[1] + DT * velocity[1], 0.13],
+        p.getQuaternionFromEuler([0, 0, yaw]))
+    for joint, rate in zip(arm, velocity[3:]):
+        info = p.getJointInfo(robot, joint)
+        current = p.getJointState(robot, joint)[0]
+        updated = np.clip(current + DT * rate, info[8] + 0.01, info[9] - 0.01)
+        p.resetJointState(robot, joint, float(updated), targetVelocity=0)
+    p.stepSimulation()
+
+
+def annotate(frame, centroid):
+    cv2.drawMarker(frame, tuple(CENTRE.astype(int)), (0, 255, 0),
+                   cv2.MARKER_CROSS, 24, 1)
+    label = "Blue block lost - robot stopped"
+    if centroid is not None:
+        point = tuple(np.rint(centroid).astype(int))
+        cv2.circle(frame, point, 6, (0, 255, 255), 2)
+        cv2.line(frame, point, tuple(CENTRE.astype(int)), (0, 255, 255), 1)
+        label = f"Centre error: {np.linalg.norm(centroid - CENTRE):.2f} px"
+    cv2.putText(frame, label, (12, 26), cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, (20, 20, 20), 3)
+    cv2.putText(frame, label, (12, 26), cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, (255, 255, 255), 1)
+    return frame
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--headless", action="store_true", help="Run without GUI windows")
+    parser.add_argument("--duration", type=float, default=0,
+                        help="Simulated seconds; 0 = until quit (headless defaults to 10 s)")
+    parser.add_argument("--moving-target", action="store_true",
+                        help="Move the blue block slowly sideways and vertically")
+    parser.add_argument("--log", type=Path, help="Write time, centroid and pixel error to CSV")
+    parser.add_argument("--save-frame", type=Path, help="Save the final annotated camera PNG")
+    args = parser.parse_args()
+    if args.duration < 0 or not np.isfinite(args.duration):
+        parser.error("--duration must be a finite, non-negative number")
+    duration = args.duration or (10.0 if args.headless else float("inf"))
+    if p.connect(p.DIRECT if args.headless else p.GUI) < 0:
+        raise RuntimeError("Could not connect to PyBullet")
+    log_file = None
+    frame = None
+    try:
+        robot, arm, wrist, target = load_scene()
+        if not args.headless:
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+            p.resetDebugVisualizerCamera(3.7, 50, -25, [1.1, 0, 0.8])
+            cv2.namedWindow("Wrist camera - Q or Esc to quit", cv2.WINDOW_AUTOSIZE)
+        writer = None
+        if args.log:
+            args.log.parent.mkdir(parents=True, exist_ok=True)
+            log_file = args.log.open("w", newline="")
+            writer = csv.writer(log_file)
+            writer.writerow(["time_s", "u_px", "v_px", "error_u_px", "error_v_px", "error_norm_px"])
+        print("Single wrist RGB camera -> blue centroid -> image error -> base + arm rates")
+        print("Ideal kinematic control; nominal depth = 2 m; centring tolerance = 2 pixels.")
+        initial_error = None
+        final_error = None
+        step = 0
+        while p.isConnected() and step * DT <= duration:
+            started = time.perf_counter()
+            sim_time = step * DT
+            if args.moving_target:
+                position = TARGET_POSITION + np.array([
+                    0, 0.25 * np.sin(0.5 * sim_time), 0.12 * np.sin(0.7 * sim_time)])
+                p.resetBasePositionAndOrientation(target, position.tolist(), [0, 0, 0, 1])
+            camera_position, optical_rotation = camera_pose(robot, wrist)
+            frame = capture_rgb(camera_position, optical_rotation)
+            centroid = detect_blue(frame)
+            final_error = None if centroid is None else float(np.linalg.norm(centroid - CENTRE))
+            if step == 0:
+                initial_error = final_error
+            if writer:
+                writer.writerow([f"{sim_time:.4f}"] + (["", "", "", "", ""] if centroid is None
+                    else [*centroid, *(centroid - CENTRE), final_error]))
+            if step % 30 == 0:
+                print(f"t={sim_time:5.1f}s  " + ("block lost - stopped" if final_error is None
+                      else f"centre error={final_error:7.2f} px"))
+            jacobian = camera_jacobian(robot, arm, camera_position, optical_rotation)
+            velocity = feedback_velocity(centroid, jacobian)
+            frame = annotate(frame, centroid)
+            if not args.headless:
+                cv2.imshow("Wrist camera - Q or Esc to quit", frame)
+                if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
+                    break
+                if cv2.getWindowProperty("Wrist camera - Q or Esc to quit", cv2.WND_PROP_VISIBLE) < 1:
+                    break
+            # The last logged/rendered image describes the final robot state.
+            if sim_time + DT > duration:
+                break
+            apply_velocity(robot, arm, velocity)
+            step += 1
+            if not args.headless:
+                time.sleep(max(0.0, DT - (time.perf_counter() - started)))
+        print(f"Initial / final pixel error: {initial_error} / {final_error}")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if log_file:
+            log_file.close()
+        if p.isConnected():
+            p.disconnect()
+        if not args.headless:
+            cv2.destroyAllWindows()
+        if args.save_frame and frame is not None:
+            args.save_frame.parent.mkdir(parents=True, exist_ok=True)
+            if not cv2.imwrite(str(args.save_frame), frame):
+                raise OSError(f"Could not save frame: {args.save_frame}")
+
+
+if __name__ == "__main__":
+    main()
