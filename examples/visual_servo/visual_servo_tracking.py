@@ -7,31 +7,29 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 
-# 1. 参数。物理 240 Hz，图像和键盘 15 Hz；为 640×480 相机和主窗口绘制留出时间。
+# 1. Settings. Physics at 240 Hz, vision and keyboard input at 15 Hz.
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--headless", action="store_true")
 parser.add_argument("--seconds", type=float, default=None)
 args = parser.parse_args()
 gui = not args.headless
 seconds = args.seconds if args.seconds is not None else (None if gui else 5.)
-assets = Path(__file__).resolve().parents[1] / "assets"
+assets = Path(__file__).resolve().parents[2] / "assets"
 dt, steps_per_frame = 1 / 240, 16
 frame_dt = dt * steps_per_frame
-width, height, fov = 640, 480, 65  # 处理分辨率；fov 是垂直视场角，非对角视场角。
-load_half = 0.09  # 吊物半边长，完整尺寸 180 × 180 × 180 mm。
-tag_size = 0.06   # 36h11 黑框外边长 60 mm；含白边的完整贴纸边长为 75 mm。
+width, height, fov = 640, 480, 65  # Pixels and vertical FOV in degrees.
+load_half = 0.09  # Half-edge length of the 180 mm cube.
+tag_size = 0.06   # Black border edge length in metres (75 mm including white margin).
 # base_position = [0., 1.05, 0.30]
 base_position = [0., 0.95, 0.30]
-camera_offset = np.array([0.055, 0., 0.])  # panda_grasptarget 坐标系中的光心位置。
-# 此关节姿态的光心相对基座约为 [0, -0.609, 0.420]，光轴向下倾斜约 19 度。
-# 当前基座 Y=0.95 时，初始光心约 [0, 0.341, 0.720]，离标记中心约 0.28 m。
-# 直接从该姿态开始，避免将未收敛的 IK 解截断后当作有效姿态。
+camera_offset = np.array([0.055, 0., 0.])  # Optical centre in the panda_grasptarget frame.
+# Start with the camera about 0.28 m from the tag, tilted 19 degrees downward.
 home = np.array([-0.073224, -0.702598, -1.312661, -2.272324, -2.284241, 2.595941, -2.173273])
-crane_home = np.array([0., 0., 0.58])  # Y、X、绳长；吊物中心初始高度 0.60 m。
+crane_home = np.array([0., 0., 0.58])  # Y, X, cable length (m). Load centre starts at Z=0.60 m.
 crane_lower = np.array([-0.35, -0.35, 0.30])
 crane_upper = np.array([0.35, 0.35, 0.88])
 crane_speed = np.array([0.15, 0.15, 0.15])
-track_min = np.array([-0.22, -0.10, 0.44])  # 标记中心的允许范围，包含正常摆动余量，m。
+track_min = np.array([-0.22, -0.10, 0.44])  # Tag workspace bounds (m), including sway margin.
 track_max = np.array([0.22, 0.30, 0.82])
 gain, damping, max_joint_speed = 4., 0.02, 1.2
 
@@ -49,7 +47,7 @@ if gui:
                   p.COV_ENABLE_SEGMENTATION_MARK_PREVIEW):
     p.configureDebugVisualizer(preview, 0)
 
-# 2. 龙门吊与已经挂好的吊物。两根摆动轴不加电机力，允许自然摆动。
+# 2. Gantry crane and suspended load with free sway joints.
 crane = p.loadURDF(str(assets / "gantry_crane.urdf"), useFixedBase=True)
 crane_names = {p.getJointInfo(crane, i)[1].decode(): i for i in range(p.getNumJoints(crane))}
 crane_joints = [crane_names[name] for name in ("gantry_y", "trolley_x", "hoist")]
@@ -77,13 +75,13 @@ load = p.createMultiBody(
 texture = p.loadTexture(str(assets / "visual_servo/apriltag_36h11_0.png"))
 p.changeVisualShape(load, 0, textureUniqueId=texture, flags=p.VISUAL_SHAPE_DOUBLE_SIDED)
 p.changeDynamics(load, -1, linearDamping=0.03, angularDamping=0.03)
-# createConstraint 的父坐标系是连杆质心，因此先换算固定连接的位置。
+# Convert the attachment pose to the hook's centre-of-mass frame.
 relative = p.multiplyTransforms(*p.invertTransform(hook[0], hook[1]), load_home, [0, 0, 0, 1])
 latch = p.createConstraint(crane, crane_joints[2], load, -1, p.JOINT_FIXED, [0, 0, 0],
                            relative[0], [0, 0, 0], parentFrameOrientation=relative[1])
 p.changeConstraint(latch, maxForce=200)
 
-# 绳子仅作显示：短圆柱首尾相接。更新其位置不会阻塞主窗口的 debug-line 绘制。
+# Draw the cable with short cylinder segments.
 cable_count, segment_length = 16, 0.06
 segment = p.createVisualShape(p.GEOM_CYLINDER, radius=0.003, length=segment_length,
                               rgbaColor=[0.8, 0.65, 0.12, 1])
@@ -97,7 +95,7 @@ cable = p.createMultiBody(
   linkJointAxis=[[0, 0, 1]] * cable_count,
 )
 
-# 3. 圆柱底座和机械臂。底座不动，正常跟踪时只给关节电机下达指令。
+# 3. Fixed pedestal and motor-driven arm.
 collision = p.createCollisionShape(p.GEOM_CYLINDER, radius=0.18, height=base_position[2])
 visual = p.createVisualShape(p.GEOM_CYLINDER, radius=0.18, length=base_position[2],
                              rgbaColor=[0.22, 0.30, 0.36, 1])
@@ -115,12 +113,12 @@ for joint, value in zip(arm_joints, home):
 for joint in movable[7:]:
   p.resetJointState(robot, joint, 0.015)
   p.setJointMotorControl2(robot, joint, p.POSITION_CONTROL, targetPosition=0.015, force=20)
-# 相机组件外观示意尺寸 24 × 32 × 80 mm；仅作显示，未模拟真实相机的质量和碰撞。
+# Visual-only camera housing, 24 x 32 x 80 mm.
 housing = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.012, 0.016, 0.04],
   visualFramePosition=[0, 0, -0.04], rgbaColor=[0.08, 0.30, 0.38, 1])
 camera_body = p.createMultiBody(baseMass=0, baseVisualShapeIndex=housing)
 
-# 4. 相机标定和 AprilTag 检测。光学坐标：X 向右、Y 向下、Z 向前。
+# 4. Camera and AprilTag detector. Optical axes are X right, Y down, Z forward.
 cv2.setNumThreads(2)
 focal = height / (2 * np.tan(np.deg2rad(fov) / 2))
 K = np.array([[focal, 0, width / 2], [0, focal, height / 2], [0, 0, 1.]])
@@ -131,7 +129,7 @@ parameters = cv2.aruco.DetectorParameters()
 parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
 detector = cv2.aruco.ArucoDetector(dictionary, parameters)
-desired = None  # 启动时拍到的角点就是参考图像，随后保持这个位置、大小和形状。
+desired = None  # Use the first detected corners as the tracking reference.
 
 if gui:
   p.resetDebugVisualizerCamera(2.6, 135, -26, [0, 0.35, 0.70])
@@ -144,7 +142,7 @@ arm_target, joint_velocity = home.copy(), np.zeros(7)
 frame, status_id, last_status = 0, -1, ""
 deadline = time.perf_counter()
 
-# 5. 主循环：键盘 → 相机图像 → 图像误差 → 关节速度 → 物理步进。
+# 5. Read input, measure image error, command joints, and step physics.
 try:
   while p.isConnected(client) and (seconds is None or frame * frame_dt < seconds):
     pressed, events = set(), {}
@@ -180,7 +178,7 @@ try:
       int(ord("e") in held) - int(ord("q") in held),
     ])
 
-    # 相机固连在末端，用机械臂自身位姿渲染实际 RGB；不读取吊物真值控制机械臂。
+    # Render the wrist camera image for visual feedback.
     state = p.getLinkState(robot, tip, computeForwardKinematics=True)
     R = np.asarray(p.getMatrixFromQuaternion(state[5])).reshape(3, 3)
     eye = np.asarray(state[4]) + R @ camera_offset
@@ -203,7 +201,7 @@ try:
       normalized = (pixels - K[:2, 2]) / focal
       if desired is None:
         desired = normalized.copy()
-      # ITERATIVE 对接近正面的平面标记也稳定；PnP 这里只提供四角点的深度。
+      # Estimate corner depths and tag position from the detected pixels.
       ok, rvec, tvec = cv2.solvePnP(marker_points, pixels, K, None, flags=cv2.SOLVEPNP_ITERATIVE)
       if ok:
         points = marker_points @ cv2.Rodrigues(rvec)[0].T + tvec.ravel()
@@ -217,11 +215,11 @@ try:
           for (x, y), Z in zip(normalized, points[:, 2]):
             rows.extend(([-1/Z, 0, x/Z, x*y, -(1+x*x), y],
                          [0, -1/Z, y/Z, 1+y*y, -x*y, -x]))
-          L = np.asarray(rows)  # 8×6：相机速度 → 四角点的归一化图像速度。
+          L = np.asarray(rows)  # 8x6 interaction matrix for four image corners.
           zeros = [0.] * len(q)
           linear, angular = p.calculateJacobian(robot, tip, camera_offset, q.tolist(), zeros, zeros)
           J = np.vstack((R.T @ np.asarray(linear)[:, :7], R.T @ np.asarray(angular)[:, :7]))
-          A = L @ J             # 8×7：关节速度 → 图像速度。
+          A = L @ J             # 8x7 image Jacobian for seven arm joints.
           inverse = A.T @ np.linalg.solve(A @ A.T + damping**2 * np.eye(8), np.eye(8))
           joint_velocity = -gain * inverse @ error
           joint_velocity += (np.eye(7) - inverse @ A) @ (0.08 * (home - q[:7]))
@@ -231,7 +229,7 @@ try:
     if paused:
       status, joint_velocity = "PAUSED - Space to resume", np.zeros(7)
     if not np.any(joint_velocity) and np.any(previous_velocity):
-      arm_target = q[:7].copy()  # 丢失、越界或暂停时，只捕获一次保持位置。
+      arm_target = q[:7].copy()  # Hold the current pose when tracking stops.
     if status != last_status:
       print(status, flush=True)
       if gui:
@@ -255,7 +253,7 @@ try:
         positionGains=[0.3] * 7, velocityGains=[1.] * 7)
       p.stepSimulation()
 
-    # 更新相机外壳和绳子的显示。不在循环里反复创建 debug line/text。
+    # Update camera and cable visuals.
     state = p.getLinkState(robot, tip, computeForwardKinematics=True)
     R = np.asarray(p.getMatrixFromQuaternion(state[5])).reshape(3, 3)
     p.resetBasePositionAndOrientation(camera_body, np.asarray(state[4]) + R @ camera_offset, state[5])
@@ -267,7 +265,7 @@ try:
                               [[(cable_length - segment_length) / cable_count]] * cable_count)
     frame += 1
     if gui:
-      # 每轮更新完成后只绘制一次，避免相机渲染与主窗口持续重绘争用时间。
+      # Redraw the main window once per vision update.
       p.configureDebugVisualizer(p.COV_ENABLE_SINGLE_STEP_RENDERING, 1)
       deadline += frame_dt
       delay = deadline - time.perf_counter()
@@ -276,7 +274,6 @@ try:
       elif delay < -0.1:
         deadline = time.perf_counter()
 except p.error:
-  # 原生窗口可能在一次 Bullet 调用中途关闭；真正的仿真错误仍直接报出。
   if p.isConnected(client):
     raise
 finally:
