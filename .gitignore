@@ -31,3 +31,4 @@ tmp/
 /test*.py
 /data/
 /datasets/
+results/
